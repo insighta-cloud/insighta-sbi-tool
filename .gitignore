@@ -1,0 +1,14 @@
+# Workspaces (input/output per portfolio)
+workspaces/*
+
+credentials.yaml
+!templates/credentials.yaml
+.insighta.yaml
+
+__pycache__/
+*.pyc
+*.egg-info/
+
+.venv/
+.cache/
+.gitkeep

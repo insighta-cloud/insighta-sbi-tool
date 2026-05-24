@@ -1,0 +1,29 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "insighta-sbi-tool"
+version = "0.1.0"
+description = "SBI Securities parser plugin for Insighta CLI"
+readme = "README.md"
+license = "CC-BY-NC-4.0"
+requires-python = ">=3.10"
+authors = [{ name = "insighta cloud Inc." }]
+dependencies = [
+    "insighta-cli",
+    "beautifulsoup4",
+    "pandas",
+]
+
+[project.entry-points."insighta_cli.plugins"]
+sbi = "insighta_sbi:register"
+
+[project.entry-points."insighta_cli.deposit_loader"]
+sbi = "insighta_sbi.parser_v2:load_deposits_for_prepare"
+
+[project.urls]
+Homepage = "https://insighta.cloud"
+
+[tool.hatch.build.targets.wheel]
+packages = ["insighta_sbi"]
