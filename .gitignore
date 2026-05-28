@@ -2,13 +2,19 @@
 workspaces/*
 
 credentials.yaml
+config.yaml
 !templates/credentials.yaml
 .insighta.yaml
 
 __pycache__/
 *.pyc
 *.egg-info/
+dist/
+build/
 
 .venv/
 .cache/
 .gitkeep
+
+.pytest_cache/
+.ruff_cache/

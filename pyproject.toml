@@ -4,12 +4,12 @@ build-backend = "hatchling.build"
 
 [project]
 name = "insighta-sbi-tool"
-version = "0.1.1"
+version = "0.1.2"
 description = "SBI Securities parser plugin for Insighta CLI"
 readme = "README.md"
 license = "CC-BY-NC-4.0"
 requires-python = ">=3.10"
-authors = [{ name = "insighta cloud Inc." }]
+authors = [{ name = "insighta cloud Inc.", email = "tech@insighta.cloud" }]
 keywords = ["insighta", "sbi", "securities", "portfolio", "parser"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -23,9 +23,16 @@ classifiers = [
     "Topic :: Office/Business :: Financial :: Investment",
 ]
 dependencies = [
-    "insighta-cli>=0.1.0",
+    "insighta-cli>=0.1.2",
     "beautifulsoup4>=4.12.0",
     "pandas>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "ruff>=0.4",
+    "pre-commit>=3.0",
 ]
 
 [project.entry-points."insighta_cli.plugins"]
@@ -41,3 +48,16 @@ Issues = "https://github.com/insighta-cloud/insighta-sbi-tool/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["insighta_sbi"]
+
+[tool.hatch.build.targets.sdist]
+exclude = ["tests/", "workspaces/"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
