@@ -3,13 +3,11 @@
 import csv
 import glob
 import os
-from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 from bs4 import BeautifulSoup
-
-from insighta_sdk import Deposit, Dirs, Holding, Trade, load_rate_file, lookup_rate
+from insighta_sdk import Deposit, Dirs, Holding, Trade
 
 JST = timezone(timedelta(hours=9))
 

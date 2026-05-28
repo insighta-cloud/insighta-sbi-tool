@@ -4,27 +4,25 @@ import csv
 import os
 
 import rich_click as click
+from insighta_sdk import Dirs, load_rate_file, lookup_rate
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-
-from insighta_sdk import Dirs, load_rate_file, lookup_rate
 
 console = Console()
 
 
 @click.command()
-@click.option("--rate", default="", help="固定為替レート (例: 155.12)")
-@click.option("--rate-file", default="", help="期間別為替レートCSV")
+@click.option("--rate", default="", help="Fixed exchange rate (e.g. 155.12)")
+@click.option("--rate-file", default="", help="Period-based exchange rate CSV")
 @click.pass_obj
-def parse(obj, rate, rate_file):
-    """SBI証券の取引履歴HTMLをパースし、CSVを生成する。"""
+def parse(obj, rate, rate_file) -> None:
+    """Parse SBI Securities trade history HTML and generate CSV."""
     from .parser_v2 import process_sbi_dir
 
     dirs: Dirs = obj["dirs"]
     dirs.ensure_output()
 
-    # SBI dir path
     sbi_dir = os.path.join(dirs.input, "sbi")
 
     if not rate_file:
@@ -33,8 +31,9 @@ def parse(obj, rate, rate_file):
                 rate_file = candidate
                 break
 
-    result = process_sbi_dir(sbi_dir, rate_file=rate_file,
-                             cache_dir=os.path.join(dirs._base or ".", ".cache"))
+    result = process_sbi_dir(
+        sbi_dir, rate_file=rate_file, cache_dir=os.path.join(dirs._base or ".", ".cache"),
+    )
 
     rates = load_rate_file(rate_file) if rate_file else []
 
@@ -59,16 +58,16 @@ def parse(obj, rate, rate_file):
                 w.writerow([d.dt, str(d.amount), d.cur, d.type, d.ticker, str(d.rate) if d.rate else ""])
 
     # Summary
-    table = Table(title="パース結果")
+    table = Table(title="Parse Result")
     table.add_column("")
     table.add_column("", justify="right")
-    table.add_row("取引件数", str(len(result.trades)))
-    table.add_row("保有銘柄", str(len(result.holdings)))
-    table.add_row("入出金", str(len(result.deposits)))
+    table.add_row("Trades", str(len(result.trades)))
+    table.add_row("Holdings", str(len(result.holdings)))
+    table.add_row("Deposits", str(len(result.deposits)))
     if result.skipped:
-        table.add_row("スキップ", str(len(result.skipped)))
+        table.add_row("Skipped", str(len(result.skipped)))
     if result.warnings:
-        table.add_row("[yellow]警告[/yellow]", str(len(result.warnings)))
+        table.add_row("[yellow]Warnings[/yellow]", str(len(result.warnings)))
     console.print(table)
     console.print(f"[green]✅ {out}[/green]")
 
@@ -79,14 +78,20 @@ def parse(obj, rate, rate_file):
 
 @click.command()
 @click.pass_obj
-def verify(obj):
-    """CSV集計とHTML実際保有を照合する。"""
+def verify(obj) -> None:
+    """Verify CSV aggregation against actual HTML holdings."""
     _run_verify(obj["dirs"])
 
 
 def _run_verify(dirs: Dirs) -> bool:
-    """CSV集計とHTML実際保有を照合する。一致ならTrue。"""
-    from decimal import Decimal
+    """Compare CSV-aggregated holdings with actual HTML holdings.
+
+    Args:
+        dirs: Dirs instance pointing to the workspace.
+
+    Returns:
+        True if CSV aggregation matches actual holdings.
+    """
 
     from .parser import aggregate_holdings, load_csv_rows
     from .parser_v2 import process_sbi_dir
@@ -101,7 +106,7 @@ def _run_verify(dirs: Dirs) -> bool:
             break
     _v2_result = process_sbi_dir(os.path.join(dirs.input, "sbi"), rate_file=rate_file)
 
-    # 移動平均法で取得単価計算
+    # Moving average cost calculation
     _avg_price: dict[str, float] = {}
     _hold_qty: dict[str, int] = {}
     sorted_rows = sorted(rows, key=lambda r: r.get("dt", ""))
@@ -132,12 +137,12 @@ def _run_verify(dirs: Dirs) -> bool:
         icon = "🟢" if acct == "NISA" else "🔵"
         table = Table(title=f"{icon} {acct}")
         table.add_column("Ticker")
-        table.add_column("数量", justify="right")
-        table.add_column("取得単価", justify="right")
-        table.add_column("CSV平均", justify="right")
-        table.add_column("現在値", justify="right")
-        table.add_column("損益", justify="right")
-        table.add_column("検証", justify="center")
+        table.add_column("Qty", justify="right")
+        table.add_column("Cost", justify="right")
+        table.add_column("CSV Avg", justify="right")
+        table.add_column("Price", justify="right")
+        table.add_column("P&L", justify="right")
+        table.add_column("Check", justify="center")
         for ticker, qty in by_acct[acct]:
             p = prices.get(ticker, {})
             a_qty = actual.get((ticker, acct))
@@ -148,8 +153,10 @@ def _run_verify(dirs: Dirs) -> bool:
             pnl_str = f"[{pnl_style}]{pnl}[/{pnl_style}]" if pnl != "-" else "-"
             ca = csv_avg.get(ticker)
             ca_str = str(ca) if ca is not None else "-"
-            table.add_row(ticker, str(qty), str(p.get("cost", "-")),
-                          ca_str, str(p.get("price", "-")), pnl_str, check)
+            table.add_row(
+                ticker, str(qty), str(p.get("cost", "-")),
+                ca_str, str(p.get("price", "-")), pnl_str, check,
+            )
         console.print(table)
 
     diffs = []
@@ -161,18 +168,18 @@ def _run_verify(dirs: Dirs) -> bool:
                           prices.get(ticker, {}).get("price", "-")))
 
     if diffs:
-        table = Table(title="🔴 差分 (実際 - 集計)")
-        table.add_column("口座")
+        table = Table(title="🔴 Differences (Actual - Aggregated)")
+        table.add_column("Account")
         table.add_column("Ticker")
-        table.add_column("集計", justify="right")
-        table.add_column("実際", justify="right")
-        table.add_column("差分", justify="right")
-        table.add_column("現在値", justify="right")
+        table.add_column("Aggregated", justify="right")
+        table.add_column("Actual", justify="right")
+        table.add_column("Diff", justify="right")
+        table.add_column("Price", justify="right")
         for acct, ticker, csv_q, act_q, diff, price in sorted(diffs):
             sign = f"+{diff}" if diff > 0 else str(diff)
             table.add_row(acct, ticker, str(csv_q), str(act_q), sign, str(price))
         console.print(table)
         return False
 
-    console.print(Panel("[bold green]✅ 集計と実際保有が完全一致[/bold green]"))
+    console.print(Panel("[bold green]✅ Aggregation matches actual holdings[/bold green]"))
     return True
