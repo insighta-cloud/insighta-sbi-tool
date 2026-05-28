@@ -38,7 +38,7 @@ class ParseResult:
 
 
 # ---------------------------------------------------------------------------
-# Classify
+# ファイル分類
 # ---------------------------------------------------------------------------
 
 def _read_head(filepath: str, n: int = 10) -> tuple[str, list[str]]:
@@ -82,7 +82,7 @@ def classify(filepath: str) -> str | None:
 
 
 # ---------------------------------------------------------------------------
-# CSV parsers
+# CSVパーサー
 # ---------------------------------------------------------------------------
 
 _EXCHANGE_MAP = {
@@ -173,7 +173,7 @@ def _parse_domestic_fund(filepath: str) -> ParseResult:
 
 
 # ---------------------------------------------------------------------------
-# Handlers
+# ハンドラー
 # ---------------------------------------------------------------------------
 
 _HANDLERS: dict[str, callable] = {
@@ -187,7 +187,7 @@ _HANDLERS: dict[str, callable] = {
 
 
 # ---------------------------------------------------------------------------
-# Dedup
+# 重複除去
 # ---------------------------------------------------------------------------
 
 def _dedup_deposits(deposits: list[Deposit]) -> tuple[list[Deposit], list[str]]:
@@ -216,7 +216,7 @@ def _dedup_deposits(deposits: list[Deposit]) -> tuple[list[Deposit], list[str]]:
 
 
 # ---------------------------------------------------------------------------
-# Main entry
+# メインエントリー
 # ---------------------------------------------------------------------------
 
 def process_sbi_dir(sbi_dir: str, cache_dir: str | None = None, rate_file: str = "") -> ParseResult:
@@ -269,11 +269,11 @@ def _save_cache(result: ParseResult, cache_dir: str):
 
 
 # ---------------------------------------------------------------------------
-# Plugin hook for prepare command deposit loading
+# prepareコマンド用 入出金読み込みプラグインフック
 # ---------------------------------------------------------------------------
 
 def load_deposits_for_prepare(dirs: Dirs) -> list[Deposit]:
-    """Entry point for insighta_cli.deposit_loader plugin."""
+    """insighta_cli.deposit_loader プラグインのエントリーポイント。"""
     sbi_dir = os.path.join(dirs.input, "sbi") if hasattr(dirs, 'input') else ""
     if not sbi_dir or not os.path.isdir(sbi_dir):
         return []

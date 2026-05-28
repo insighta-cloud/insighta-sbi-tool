@@ -53,7 +53,7 @@ def _label_text(el) -> str:
 
 
 # ---------------------------------------------------------------------------
-# SBI deposit parsers
+# SBI 入出金パーサー
 # ---------------------------------------------------------------------------
 
 def _parse_sbi_transfer(filepath: str) -> list[Deposit]:
@@ -209,7 +209,7 @@ def _parse_sbi_gaika_nyushukkin(filepath: str) -> list[Deposit]:
 
 
 # ---------------------------------------------------------------------------
-# HTML parsers
+# HTMLパーサー
 # ---------------------------------------------------------------------------
 
 def parse_history_html(filename: str) -> tuple[list[Trade], list[str]]:

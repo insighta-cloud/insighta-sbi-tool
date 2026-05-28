@@ -1,4 +1,4 @@
-"""SBI parse and verify CLI commands."""
+"""SBI証券 パース・検証 CLIコマンド。"""
 
 import csv
 import os
@@ -17,7 +17,7 @@ console = Console()
 @click.option("--rate-file", default="", help="Period-based exchange rate CSV")
 @click.pass_obj
 def parse(obj, rate, rate_file) -> None:
-    """Parse SBI Securities trade history HTML and generate CSV."""
+    """SBI証券の取引履歴HTMLをパースしてCSVを生成する。"""
     from .parser_v2 import process_sbi_dir
 
     dirs: Dirs = obj["dirs"]
@@ -47,7 +47,7 @@ def parse(obj, rate, rate_file) -> None:
             r = lookup_rate(rates, t.dt, t.cur, t.base) if rates else (rate if t.cur != t.base else "")
             w.writerow([t.dt, t.ticker, t.qty, t.acct, t.price, t.avg, t.cur, t.base, r or ""])
 
-    # deposits
+    # 入出金
     os.makedirs(os.path.join(dirs.input, "deposit"), exist_ok=True)
     dep_out = os.path.join(dirs.input, "deposit", "_auto_deposits.csv")
     if result.deposits:
@@ -57,7 +57,7 @@ def parse(obj, rate, rate_file) -> None:
             for d in result.deposits:
                 w.writerow([d.dt, str(d.amount), d.cur, d.type, d.ticker, str(d.rate) if d.rate else ""])
 
-    # Summary
+    # サマリー表示
     table = Table(title="Parse Result")
     table.add_column("")
     table.add_column("", justify="right")
@@ -79,18 +79,18 @@ def parse(obj, rate, rate_file) -> None:
 @click.command()
 @click.pass_obj
 def verify(obj) -> None:
-    """Verify CSV aggregation against actual HTML holdings."""
+    """CSV集計結果を実際のHTML保有銘柄と照合する。"""
     _run_verify(obj["dirs"])
 
 
 def _run_verify(dirs: Dirs) -> bool:
-    """Compare CSV-aggregated holdings with actual HTML holdings.
+    """CSV集計の保有数と実際のHTML保有数を比較する。
 
     Args:
-        dirs: Dirs instance pointing to the workspace.
+        dirs: ワークスペースを指すDirsインスタンス。
 
     Returns:
-        True if CSV aggregation matches actual holdings.
+        CSV集計が実際の保有数と一致する場合True。
     """
 
     from .parser import aggregate_holdings, load_csv_rows
@@ -106,7 +106,7 @@ def _run_verify(dirs: Dirs) -> bool:
             break
     _v2_result = process_sbi_dir(os.path.join(dirs.input, "sbi"), rate_file=rate_file)
 
-    # Moving average cost calculation
+    # 移動平均取得単価の計算
     _avg_price: dict[str, float] = {}
     _hold_qty: dict[str, int] = {}
     sorted_rows = sorted(rows, key=lambda r: r.get("dt", ""))

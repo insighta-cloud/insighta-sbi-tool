@@ -1,61 +1,76 @@
 # insighta-sbi-tool
 
-SBI Securities (Japan) parser plugin for [insighta-cli](https://github.com/insighta-cloud/insighta-cli).
+[insighta-cli](https://github.com/insighta-cloud/insighta-cli) 用の SBI証券パーサープラグイン。
 
-## Installation
+## インストール
 
 ```bash
 pip install insighta-sbi-tool
 ```
 
-This automatically installs `insighta-cli` and `insighta-sdk` as dependencies.
+`insighta-cli` と `insighta-sdk` が依存関係として自動インストールされます。
 
-## Usage
+## 使い方
 
 ```bash
-# Parse SBI trade history into CSV
+# SBI取引履歴をCSVにパース
 insighta --work sbi-us-stocks parse
 
-# Verify parsed data against current holdings
+# パース結果を現在の保有銘柄と照合
 insighta --work sbi-us-stocks verify
 ```
 
-## Supported Formats
+## 認証
 
-| Type | Format | Encoding |
-|------|--------|----------|
-| Order history | HTML (web scrape) | UTF-8 |
-| Holdings summary | HTML (web scrape) | UTF-8 |
-| Trade settlement | CSV | Shift_JIS |
-| Transfer history | CSV | UTF-8 |
-| Foreign currency deposits | CSV | UTF-8 |
-| Currency exchange | CSV | Shift_JIS |
-| Dividends | CSV | Shift_JIS |
-| Domestic fund trades | CSV | Shift_JIS |
+[insighta.cloud/settings](https://insighta.cloud/settings) の **Developer** タブから API キーを取得し、保存します：
 
-## Workspace Structure
+```bash
+insighta config --credentials credentials.yaml
+```
+
+`credentials.yaml` の形式：
+
+```yaml
+api_key: "your-api-key-here"
+endpoint: "https://openapi.insighta.cloud"
+```
+
+## 対応フォーマット
+
+| 種類 | 形式 | エンコーディング |
+|------|------|-----------------|
+| 注文履歴 | HTML (Webスクレイプ) | UTF-8 |
+| 保有銘柄一覧 | HTML (Webスクレイプ) | UTF-8 |
+| 約定履歴 | CSV | Shift_JIS |
+| 入出金振替 | CSV | UTF-8 |
+| 外貨入出金 | CSV | UTF-8 |
+| 為替取引 | CSV | Shift_JIS |
+| 配当金 | CSV | Shift_JIS |
+| 国内投信取引 | CSV | Shift_JIS |
+
+## ワークスペース構成
 
 ```
 workspaces/sbi-us-stocks/
 ├── input/
-│   ├── sbi/          ← Place all SBI files here (auto-classified)
-│   ├── seed/         ← Pre-existing holdings CSV (optional)
-│   └── rate.csv      ← Exchange rate periods (optional)
+│   ├── sbi/          ← SBIファイルをここに配置（自動分類）
+│   ├── seed/         ← 既存保有銘柄CSV（任意）
+│   └── rate.csv      ← 為替レート期間（任意）
 └── output/
-    ├── history.csv   ← Generated trade history
-    ├── order.csv     ← Generated order groups
-    └── upload.yaml   ← Upload configuration
+    ├── history.csv   ← 生成された取引履歴
+    ├── order.csv     ← 生成された注文グループ
+    └── upload.yaml   ← アップロード設定
 ```
 
-## Development
+## 開発
 
 ```bash
 pip install -e .
 insighta --help
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+ガイドラインは [CONTRIBUTING.md](CONTRIBUTING.md) を参照してください。
 
-## License
+## ライセンス
 
-CC-BY-NC-4.0 — See [LICENSE](LICENSE)
+CC-BY-NC-4.0 — [LICENSE](LICENSE) を参照

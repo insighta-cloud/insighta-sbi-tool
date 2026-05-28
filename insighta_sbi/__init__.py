@@ -1,8 +1,8 @@
-"""Insighta SBI Tool - SBI Securities parser plugin."""
+"""Insighta SBI Tool — SBI証券パーサープラグイン。"""
 
 
 def register(cli) -> None:
-    """Register SBI commands with the CLI."""
+    """SBIコマンドをCLIに登録する。"""
     from insighta_sbi.commands import parse, verify
 
     cli.add_command(parse)
