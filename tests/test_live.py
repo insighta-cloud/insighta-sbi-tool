@@ -9,7 +9,6 @@ import os
 
 import pytest
 from click.testing import CliRunner
-
 from insighta_cli.cli import cli
 
 pytestmark = pytest.mark.live

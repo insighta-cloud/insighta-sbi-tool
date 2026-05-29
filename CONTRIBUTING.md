@@ -61,7 +61,7 @@ pre-commit install
 pytest tests/ -x -q
 
 # ライブテスト（API接続あり）
-INSIGHTA_DEV_API_KEY=your-key pytest --live
+INSIGHTA_API_KEY=your-key pytest --live
 ```
 
 ## 新しい SBI ファイル形式の追加

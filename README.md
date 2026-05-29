@@ -1,5 +1,10 @@
 # insighta-sbi-tool
 
+[![CI](https://github.com/insighta-cloud/insighta-sbi-tool/actions/workflows/ci.yml/badge.svg)](https://github.com/insighta-cloud/insighta-sbi-tool/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/insighta-sbi-tool)](https://pypi.org/project/insighta-sbi-tool/)
+[![Python](https://img.shields.io/pypi/pyversions/insighta-sbi-tool)](https://pypi.org/project/insighta-sbi-tool/)
+[![License](https://img.shields.io/badge/license-CC--BY--NC--4.0-blue)](LICENSE)
+
 [insighta-cli](https://github.com/insighta-cloud/insighta-cli) 用の SBI証券パーサープラグイン。
 
 ## インストール
