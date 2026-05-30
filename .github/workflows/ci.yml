@@ -21,4 +21,4 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - run: pip install -e ".[dev]"
       - run: ruff check insighta_sbi/ tests/
-      - run: pytest tests/ -q -m "not live"
+      - run: pytest tests/ -q
