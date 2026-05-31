@@ -1,24 +1,13 @@
-"""SBI証券 input/sbi/ 自動認識パーサー (v2)."""
+"""SBI証券 input/sbi/ 自動認識パーサー (v2) — insighta-sbi-parser アダプター."""
 
-import glob
 import os
-import re
 from dataclasses import dataclass, field
-from datetime import datetime
-from decimal import Decimal
 
-import pandas as pd
 from insighta_sdk import Deposit, Dirs, Holding, Trade, load_rate_file, lookup_rate
 
-from .parser import (
-    EXCHANGE_CURRENCY,
-    _parse_sbi_exchange,
-    _parse_sbi_gaika_nyushukkin,
-    _parse_sbi_transfer,
-    _to_jst_iso,
-    parse_history_html,
-    parse_summary_html,
-)
+import insighta_sbi_parser
+
+from .parser import EXCHANGE_CURRENCY
 
 
 @dataclass
@@ -37,209 +26,31 @@ class ParseResult:
         self.warnings.extend(other.warnings)
 
 
-# ---------------------------------------------------------------------------
-# ファイル分類
-# ---------------------------------------------------------------------------
-
-def _read_head(filepath: str, n: int = 10) -> tuple[str, list[str]]:
-    raw = open(filepath, "rb").read(4096)
-    for enc in ("shift_jis", "utf-8-sig", "utf-8"):
-        try:
-            text = raw.decode(enc)
-            return enc, text.splitlines()[:n]
-        except (UnicodeDecodeError, ValueError):
-            continue
-    return "utf-8", raw.decode("utf-8", errors="ignore").splitlines()[:n]
-
-
-def classify(filepath: str) -> str | None:
-    ext = os.path.splitext(filepath)[1].lower()
-    if ext == ".html":
-        with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
-            head = f.read(2048)
-        if "stock-holding-table" in head or "css-djjzqp" in head:
-            return "summary"
-        if "table-row" in head and "sticker" in head:
-            return "history_html"
-        return None
-    if ext != ".csv":
-        return None
-    _, lines = _read_head(filepath)
-    text = "\n".join(lines)
-    if "期間（国内約定日）" in text or ("国内約定日" in text and "約定数量" in text):
-        return "history_csv"
-    if "約定履歴照会" in text:
-        return "domestic_fund"
-    if "為替取引注文履歴" in text:
-        return "currency_exchange"
-    if "外貨入出金明細" in text:
-        return "deposit_gaika"
-    if "入出金振替操作履歴" in text or "SBIインデックスファンド入出金" in text:
-        return "deposit_transfer"
-    if "検索件数" in text and "受渡日" in text:
-        return "deposit_dividend"
-    return None
+def _convert_result(src: insighta_sbi_parser.ParseResult) -> ParseResult:
+    """insighta_sbi_parser の型を insighta_sdk の型に変換."""
+    return ParseResult(
+        trades=[Trade(dt=t.dt, ticker=t.ticker, qty=t.qty, acct=t.acct,
+                      price=t.price, avg=t.avg, cur=t.cur, base=t.base)
+                for t in src.trades],
+        holdings=[Holding(ticker=h.ticker, acct=h.acct, qty=h.qty,
+                          cost=h.cost, price=h.price, pnl=h.pnl)
+                  for h in src.holdings],
+        deposits=[Deposit(dt=d.dt, amount=d.amount, cur=d.cur, type=d.type,
+                          ticker=d.ticker, rate=d.rate)
+                  for d in src.deposits],
+        skipped=src.skipped,
+        warnings=src.warnings,
+    )
 
 
-# ---------------------------------------------------------------------------
-# CSVパーサー
-# ---------------------------------------------------------------------------
+# Re-export for backward compat
+classify = insighta_sbi_parser.classify
 
-_EXCHANGE_MAP = {
-    "NASDAQ": "NASDAQ",
-    "NYSE ARCA": "NYSE Arca",
-    "New York Stock Exchange": "NYSE",
-    "NYSE": "NYSE",
-}
-_TICKER_RE = re.compile(r"(\S+)\s*/\s*(.+)$")
-
-
-def _parse_meigara(name: str) -> tuple[str, str, str]:
-    m = _TICKER_RE.search(name)
-    if not m:
-        return name, "", "USD"
-    ticker = m.group(1)
-    exchange_raw = m.group(2).strip()
-    exchange = _EXCHANGE_MAP.get(exchange_raw, exchange_raw)
-    base = EXCHANGE_CURRENCY.get(exchange, "USD")
-    return ticker, exchange, base
-
-
-def _find_header_row(filepath: str, marker: str, encoding: str = "shift_jis") -> int:
-    with open(filepath, "rb") as f:
-        raw = f.read()
-    text = raw.decode(encoding, errors="ignore")
-    for i, line in enumerate(text.splitlines()):
-        if marker in line:
-            return i
-    return 0
-
-
-def _parse_yakujo_csv(filepath: str, rates=None) -> ParseResult:
-    result = ParseResult()
-    skip = _find_header_row(filepath, "国内約定日,通貨,銘柄名")
-    df = pd.read_csv(filepath, encoding="shift_jis", skiprows=skip)
-    for _, row in df.iterrows():
-        dt_raw = str(row["国内約定日"]).replace("年", "/").replace("月", "/").replace("日", "")
-        ticker, exchange, base = _parse_meigara(str(row["銘柄名"]))
-        is_buy = row["取引"] == "買付"
-        qty = int(row["約定数量"])
-        acct = "TT" if row["預り区分"] == "特定" else row["預り区分"]
-        price = Decimal(str(row["約定単価"]))
-        cur = "USD" if row["通貨"] == "米国ドル" else "JPY"
-        settle = Decimal(str(row["受渡金額"]))
-        dt_iso = _to_jst_iso(dt_raw)
-        result.trades.append(Trade(
-            dt=dt_iso, ticker=ticker, qty=qty if is_buy else -qty,
-            acct=acct, price=price, avg=price, cur=cur, base=base,
-        ))
-        calc = price * qty
-        if cur == "USD":
-            fee = (settle - calc) if is_buy else (calc - settle)
-        elif rates:
-            rate = lookup_rate(rates, dt_iso, cur, base)
-            if rate:
-                fee = (settle - calc * rate) if is_buy else (calc * rate - settle)
-            else:
-                result.warnings.append(f"rate未設定: {dt_iso[:10]} {ticker} {cur}")
-                continue
-        else:
-            continue
-        if fee > 0:
-            result.deposits.append(Deposit(dt=dt_iso, amount=-fee, cur=cur, type="budget", ticker=f"fee:{ticker}"))
-    return result
-
-
-def _parse_domestic_fund(filepath: str) -> ParseResult:
-    result = ParseResult()
-    skip = _find_header_row(filepath, "約定日,銘柄", encoding="shift_jis")
-    df = pd.read_csv(filepath, encoding="shift_jis", skiprows=skip)
-    df = df.dropna(subset=["約定日"])
-    for _, row in df.iterrows():
-        dt_raw = str(row["約定日"]).strip()
-        trade_type = str(row["取引"]).strip() if pd.notna(row.get("取引")) else ""
-        settle_str = str(row["受渡金額/決済損益"]).strip().replace(",", "")
-        try:
-            amount = Decimal(settle_str)
-        except Exception:
-            continue
-        if "買" in trade_type:
-            amount = -amount
-        elif "売" not in trade_type:
-            continue
-        meigara = str(row["銘柄"]).strip() if pd.notna(row.get("銘柄")) else ""
-        result.deposits.append(Deposit(dt=_to_jst_iso(dt_raw), amount=amount, cur="JPY", type="budget", ticker=meigara))
-    return result
-
-
-# ---------------------------------------------------------------------------
-# ハンドラー
-# ---------------------------------------------------------------------------
-
-_HANDLERS: dict[str, callable] = {
-    "summary": lambda fp: ParseResult(holdings=parse_summary_html(fp)),
-    "history_html": lambda fp: ParseResult(trades=parse_history_html(fp)[0], skipped=parse_history_html(fp)[1]),
-    "domestic_fund": lambda fp: _parse_domestic_fund(fp),
-    "deposit_transfer": lambda fp: ParseResult(deposits=_parse_sbi_transfer(fp)),
-    "deposit_gaika": lambda fp: ParseResult(deposits=_parse_sbi_gaika_nyushukkin(fp)),
-    "currency_exchange": lambda fp: ParseResult(deposits=_parse_sbi_exchange(fp)),
-}
-
-
-# ---------------------------------------------------------------------------
-# 重複除去
-# ---------------------------------------------------------------------------
-
-def _dedup_deposits(deposits: list[Deposit]) -> tuple[list[Deposit], list[str]]:
-    kept: list[Deposit] = []
-    skipped: list[str] = []
-
-    def _parse_dt(iso: str) -> datetime | None:
-        try:
-            return datetime.fromisoformat(iso)
-        except Exception:
-            return None
-
-    for d in deposits:
-        dt = _parse_dt(d.dt)
-        dup = False
-        if dt:
-            for k in kept:
-                kt = _parse_dt(k.dt)
-                if kt and k.cur == d.cur and k.amount == d.amount and abs((dt - kt).days) <= 2:
-                    skipped.append(f"重複除去: {d.dt} {d.amount} {d.cur} {d.ticker}")
-                    dup = True
-                    break
-        if not dup:
-            kept.append(d)
-    return kept, skipped
-
-
-# ---------------------------------------------------------------------------
-# メインエントリー
-# ---------------------------------------------------------------------------
 
 def process_sbi_dir(sbi_dir: str, cache_dir: str | None = None, rate_file: str = "") -> ParseResult:
     """input/sbi/ ディレクトリ内の全ファイルを自動分類・パース。"""
-    rates = load_rate_file(rate_file) if rate_file else []
-    result = ParseResult()
-    files = sorted(glob.glob(os.path.join(sbi_dir, "*")))
-
-    for fp in files:
-        if os.path.isdir(fp):
-            continue
-        file_type = classify(fp)
-        if file_type == "history_csv":
-            result.merge(_parse_yakujo_csv(fp, rates=rates))
-        elif file_type and file_type in _HANDLERS:
-            result.merge(_HANDLERS[file_type](fp))
-        elif file_type is None:
-            result.warnings.append(f"分類不能: {os.path.basename(fp)}")
-        else:
-            result.warnings.append(f"未対応タイプ ({file_type}): {os.path.basename(fp)}")
-
-    result.deposits, dup_skipped = _dedup_deposits(result.deposits)
-    result.skipped.extend(dup_skipped)
+    src = insighta_sbi_parser.process_sbi_dir(sbi_dir, rate_file=rate_file)
+    result = _convert_result(src)
 
     if cache_dir:
         _save_cache(result, cache_dir)
@@ -247,6 +58,7 @@ def process_sbi_dir(sbi_dir: str, cache_dir: str | None = None, rate_file: str =
 
 
 def _save_cache(result: ParseResult, cache_dir: str):
+    import pandas as pd
     os.makedirs(cache_dir, exist_ok=True)
     if result.trades:
         rows = [{"dt": t.dt, "ticker": t.ticker, "qty": t.qty, "acct": t.acct,
@@ -267,10 +79,6 @@ def _save_cache(result: ParseResult, cache_dir: str):
         with open(os.path.join(cache_dir, "warnings.txt"), "w", encoding="utf-8") as f:
             f.write("\n".join(result.warnings))
 
-
-# ---------------------------------------------------------------------------
-# prepareコマンド用 入出金読み込みプラグインフック
-# ---------------------------------------------------------------------------
 
 def load_deposits_for_prepare(dirs: Dirs) -> list[Deposit]:
     """insighta_cli.deposit_loader プラグインのエントリーポイント。"""
