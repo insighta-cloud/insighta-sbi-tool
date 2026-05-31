@@ -3,11 +3,8 @@
 import os
 from dataclasses import dataclass, field
 
-from insighta_sdk import Deposit, Dirs, Holding, Trade, load_rate_file, lookup_rate
-
 import insighta_sbi_parser
-
-from .parser import EXCHANGE_CURRENCY
+from insighta_sdk import Deposit, Dirs, Holding, Trade
 
 
 @dataclass

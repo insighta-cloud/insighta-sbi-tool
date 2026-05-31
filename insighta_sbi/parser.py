@@ -9,18 +9,13 @@ import glob
 import os
 from decimal import Decimal
 
-from insighta_sdk import Deposit, Dirs, Holding, Trade
-
 import insighta_sbi_parser
-from insighta_sbi_parser.html_parser import EXCHANGE_CURRENCY
+from insighta_sbi_parser.html_parser import EXCHANGE_CURRENCY  # noqa: F401
 from insighta_sbi_parser.utils import to_jst_iso as _to_jst_iso
+from insighta_sdk import Deposit, Dirs, Holding, Trade
 
 # Re-export for backward compat
 EXCHANGE_CURRENCY = EXCHANGE_CURRENCY
-
-
-def _to_jst_iso(dt_str: str) -> str:
-    return insighta_sbi_parser.utils.to_jst_iso(dt_str)
 
 
 def _to_decimal(val: str) -> Decimal:
