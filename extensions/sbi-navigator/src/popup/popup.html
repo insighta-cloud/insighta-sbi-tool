@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Insighta SBI Navigator</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">LOCAL-ONLY HELPER</p>
+        <h1>Insighta SBI Navigator</h1>
+        <p class="lead">必要な履歴画面を開き、保存するファイルを確認します。</p>
+      </header>
+
+      <button id="open-portal" class="primary" type="button">SBI証券にログイン</button>
+      <p id="status" class="status" aria-live="polite">ログイン情報や取引データは取得しません。</p>
+
+      <section aria-labelledby="downloads-heading">
+        <h2 id="downloads-heading">取得するファイル</h2>
+        <div id="route-list" class="route-list"></div>
+      </section>
+
+      <section class="next-step" aria-labelledby="next-step-heading">
+        <h2 id="next-step-heading">保存後</h2>
+        <p><code>input/sbi/</code> にファイルを置き、<code>insighta --work sbi-us-stocks parse</code> を実行します。</p>
+      </section>
+    </main>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

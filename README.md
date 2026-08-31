@@ -25,6 +25,13 @@ insighta --work sbi-us-stocks parse
 insighta --work sbi-us-stocks verify
 ```
 
+## Chrome拡張機能（試験運用）
+
+SBI証券で必要なHTML/CSVを保存する画面への案内には、ローカル専用の
+[Insighta SBI Navigator](extensions/sbi-navigator/README.md) を利用できます。
+この拡張機能はログイン情報・Cookie・取引データを取得せず、公式ポータルを開いて
+保存手順を表示するだけです。
+
 ## 認証
 
 [insighta.cloud/settings](https://insighta.cloud/settings) の **Developer** タブから API キーを取得し、保存します：

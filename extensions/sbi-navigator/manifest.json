@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Insighta SBI Navigator",
+  "version": "0.1.0",
+  "description": "SBI証券でInsighta用ファイルを保存する画面へ案内するローカル専用ツール。",
+  "action": {
+    "default_title": "Insighta SBI Navigator",
+    "default_popup": "src/popup/popup.html"
+  }
+}
