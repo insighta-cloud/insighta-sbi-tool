@@ -1,0 +1,8 @@
+{
+  "name": "insighta-sbi-navigator",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/"
+  }
+}
